@@ -2,6 +2,7 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
+const { roomHandler } = require("./src/room");
 
 const app = express();
 app.use(cors());
@@ -9,46 +10,17 @@ app.use(cors());
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: "*",
     methods: ["GET", "POST"],
   },
 });
 
-let callRequests = [];
-
 io.on("connection", (socket) => {
-  socket.emit("me", socket.id);
-
-  socket.on("signal", (data) => {
-    console.log("Received signal event: ", data);
-    if (data && data.to) {
-      console.log("Emitting signal to: ", data.to);
-      io.to(data.to).emit("signal", data);
-    } else {
-      console.log("Invalid data or missing 'to' field: ", data);
-    }
+  console.log("user is connected");
+  roomHandler(socket);
+  socket.on("disconnect", () => {
+    console.log("user is disconnected");
   });
-
-  socket.on("requestCall", (data) => {
-    const request = {
-      id: socket.id,
-      name: data.name || "Anonymous",
-      phoneNumber: data.phoneNumber,
-      timestamp: new Date(),
-    };
-    callRequests.push(request);
-    io.emit("updateDashboard", callRequests);
-  });
-
-  socket.on("adminCallUser", ({ id, name }) => {
-    io.to(id).emit("callUser", { from: socket.id, name: "Admin" });
-    io.to(id).emit("callAccepted");
-  });
-
-  socket.on("disconnect", () => {});
 });
 
-const PORT = 5000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+server.listen(4000, () => console.log("Server is running on port 4000"));
